@@ -388,18 +388,31 @@ def red_lstm_corto_plazo(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90):
     # Cuadrar la semilla para poder reproducir en las mismas condiciones
     numpy.random.seed(7)
     dataset = data_csv_np.astype('float32')
+    dataset_copy = dataset.copy()
+    # Dividir para train y split
+    train_size = int(len(dataset) * porcentaje_entrenamiento) + 1 # agrego un nuevo valor en train
+    test_size = len(dataset)+2 - train_size # Agrego uno en train y otro en test
+    #-----------------------------------------------------------
+    # Cuadrar los puntos para que se mostrar en la gráfica correctamente y no perder datos
+    last_row = numpy.array(dataset.iloc[-1,:].values).reshape(1,1)
+    last_train_row = numpy.array(dataset.iloc[train_size-1,:].values).reshape(1,1)
+    dataset_split = dataset.iloc[:train_size-1,:]
+    dataset_split = dataset_split.append(pandas.DataFrame(last_train_row))
+    dataset_split2 = dataset.iloc[train_size-1:,:]
+    dataset_split2 = dataset_split2.append(pandas.DataFrame(last_row))
+    frames = [dataset_split, dataset_split2]
+    dataset = pandas.concat(frames)
+    #------------------------------------------------------------
     # Normalizar el dataset
     scaler = MinMaxScaler(feature_range=(0, 1))
     dataset = scaler.fit_transform(dataset)
-    # Dividir para train y split
-    train_size = int(len(dataset) * porcentaje_entrenamiento)
-    test_size = len(dataset) - train_size
+    dataset_copy = scaler.fit_transform(dataset_copy)
     train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
     print('Valores en train: ',len(train), 'Valores en test: ',len(test))
     # Covertir un array de valores en una matrix dataset
     def create_dataset(dataset, look_back=1):
         dataX, dataY = [], []
-        for i in range(len(dataset)-look_back-1):
+        for i in range(len(dataset)-look_back):
             a = dataset[i:(i+look_back), 0]
             dataX.append(a)
             dataY.append(dataset[i + look_back, 0])
@@ -409,9 +422,12 @@ def red_lstm_corto_plazo(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90):
     look_back = 1
     trainX, trainY = create_dataset(train, look_back)
     testX, testY = create_dataset(test, look_back)
+    #print(testX, testY)
     # redimensionar la entrada para que sea de la forma: [samples, time steps, features]
     trainX = numpy.reshape(trainX, (trainX.shape[0], 1, trainX.shape[1]))
     testX = numpy.reshape(testX, (testX.shape[0], 1, testX.shape[1]))
+    #print(trainX.shape)
+    #print(testX.shape)
     # crear y entrenar el modelo lstm
     model = Sequential()
     model.add(LSTM(4, input_shape=(1, look_back)))
@@ -435,14 +451,17 @@ def red_lstm_corto_plazo(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90):
     trainPredictPlot = numpy.empty_like(dataset)
     trainPredictPlot[:, :] = numpy.nan
     trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
+    #print(testPredict)
     # correr las prediciones para plotear
     testPredictPlot = numpy.empty_like(dataset)
     testPredictPlot[:, :] = numpy.nan
-    testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
-    return [scaler.inverse_transform(dataset), trainPredictPlot, testPredictPlot, [trainScore,testScore]]
+    testPredictPlot[len(trainPredict)+(look_back*2):len(dataset), :] = testPredict
+    #print('h', testPredictPlot)
+    return [scaler.inverse_transform(dataset_copy), trainPredictPlot, testPredictPlot, [trainScore,testScore]]
 
 def lstm_ventana(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90, num_anteriores=3, num_capas=4):
     import numpy
+    import pandas
     import matplotlib.pyplot as plt
     from pandas import read_csv
     import math
@@ -456,7 +475,7 @@ def lstm_ventana(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90, num_ante
     # convert an array of values into a dataset matrix
     def create_dataset(dataset, look_back=1):
         dataX, dataY = [], []
-        for i in range(len(dataset)-look_back-1):
+        for i in range(len(dataset)-look_back):
             a = dataset[i:(i+look_back), 0]
             dataX.append(a)
             dataY.append(dataset[i + look_back, 0])
@@ -466,12 +485,25 @@ def lstm_ventana(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90, num_ante
     numpy.random.seed(7)
     # asignar dataset
     dataset = data_csv_np.astype('float32')
-    # normalizar
+    dataset_copy = dataset.copy()
+    # Dividir para train y split
+    train_size = int(len(dataset) * porcentaje_entrenamiento) + 1 # agrego un nuevo valor en train
+    test_size = len(dataset)+2 - train_size # Agrego uno en train y otro en test
+    #-----------------------------------------------------------
+    # Cuadrar los puntos para que se mostrar en la gráfica correctamente y no perder datos
+    last_row = numpy.array(dataset.iloc[-1,:].values).reshape(1,1)
+    last_train_row = numpy.array(dataset.iloc[train_size-1,:].values).reshape(1,1)
+    dataset_split = dataset.iloc[:train_size-1,:]
+    dataset_split = dataset_split.append(pandas.DataFrame(last_train_row))
+    dataset_split2 = dataset.iloc[train_size-1:,:]
+    dataset_split2 = dataset_split2.append(pandas.DataFrame(last_row))
+    frames = [dataset_split, dataset_split2]
+    dataset = pandas.concat(frames)
+    #------------------------------------------------------------
+    # Normalizar el dataset
     scaler = MinMaxScaler(feature_range=(0, 1))
     dataset = scaler.fit_transform(dataset)
-    # dividir train y test
-    train_size = int(len(dataset) * porcentaje_entrenamiento)
-    test_size = len(dataset) - train_size
+    dataset_copy = scaler.fit_transform(dataset_copy)
     train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
     print('Valores en train: ',len(train), 'Valores en test: ',len(test))
     # reshape into X=t and Y=t+1
@@ -507,13 +539,14 @@ def lstm_ventana(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90, num_ante
     # correr las predicciones para plotear
     testPredictPlot = numpy.empty_like(dataset)
     testPredictPlot[:, :] = numpy.nan
-    testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
-    return [scaler.inverse_transform(dataset), trainPredictPlot, testPredictPlot, [trainScore,testScore]]
+    testPredictPlot[len(trainPredict)+(look_back*2):len(dataset), :] = testPredict
+    return [scaler.inverse_transform(dataset_copy), trainPredictPlot, testPredictPlot, [trainScore,testScore]]
 
 def lstm_ventana_regresion(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90, num_anteriores=3, num_capas=4):
     import numpy
     import matplotlib.pyplot as plt
     from pandas import read_csv
+    import pandas
     import math
     from keras.models import Sequential
     from keras.layers import Dense
@@ -523,7 +556,7 @@ def lstm_ventana_regresion(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90
     # convert an array of values into a dataset matrix
     def create_dataset(dataset, look_back=1):
         dataX, dataY = [], []
-        for i in range(len(dataset)-look_back-1):
+        for i in range(len(dataset)-look_back):
             a = dataset[i:(i+look_back), 0]
             dataX.append(a)
             dataY.append(dataset[i + look_back, 0])
@@ -532,12 +565,25 @@ def lstm_ventana_regresion(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90
     numpy.random.seed(7)
     # load the dataset
     dataset = data_csv_np.astype('float32')
-    # normalize the dataset
+    dataset_copy = dataset.copy()
+    # Dividir para train y split
+    train_size = int(len(dataset) * porcentaje_entrenamiento) + 1 # agrego un nuevo valor en train
+    test_size = len(dataset)+2 - train_size # Agrego uno en train y otro en test
+    #-----------------------------------------------------------
+    # Cuadrar los puntos para que se mostrar en la gráfica correctamente y no perder datos
+    last_row = numpy.array(dataset.iloc[-1,:].values).reshape(1,1)
+    last_train_row = numpy.array(dataset.iloc[train_size-1,:].values).reshape(1,1)
+    dataset_split = dataset.iloc[:train_size-1,:]
+    dataset_split = dataset_split.append(pandas.DataFrame(last_train_row))
+    dataset_split2 = dataset.iloc[train_size-1:,:]
+    dataset_split2 = dataset_split2.append(pandas.DataFrame(last_row))
+    frames = [dataset_split, dataset_split2]
+    dataset = pandas.concat(frames)
+    #------------------------------------------------------------
+    # Normalizar el dataset
     scaler = MinMaxScaler(feature_range=(0, 1))
     dataset = scaler.fit_transform(dataset)
-    # split into train and test sets
-    train_size = int(len(dataset) * porcentaje_entrenamiento)
-    test_size = len(dataset) - train_size
+    dataset_copy = scaler.fit_transform(dataset_copy)
     train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
     print('Valores en train: ',len(train), 'Valores en test: ',len(test))
     # reshape into X=t and Y=t+1
@@ -573,13 +619,14 @@ def lstm_ventana_regresion(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90
     # shift test predictions for plotting
     testPredictPlot = numpy.empty_like(dataset)
     testPredictPlot[:, :] = numpy.nan
-    testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
-    return [scaler.inverse_transform(dataset), trainPredictPlot, testPredictPlot, [trainScore,testScore]]
+    testPredictPlot[len(trainPredict)+(look_back*2):len(dataset), :] = testPredict
+    return [scaler.inverse_transform(dataset_copy), trainPredictPlot, testPredictPlot, [trainScore,testScore]]
 
 def lstm_memoria_lotes(data_csv_np, epoch=50 ,porcentaje_entrenamiento=0.80, num_anteriores=3, num_capas=4):
     import numpy
     import matplotlib.pyplot as plt
     from pandas import read_csv
+    import pandas
     import math
     from keras.models import Sequential
     from keras.layers import Dense
@@ -589,7 +636,7 @@ def lstm_memoria_lotes(data_csv_np, epoch=50 ,porcentaje_entrenamiento=0.80, num
     # convert an array of values into a dataset matrix
     def create_dataset(dataset, look_back=1):
         dataX, dataY = [], []
-        for i in range(len(dataset)-look_back-1):
+        for i in range(len(dataset)-look_back):
             a = dataset[i:(i+look_back), 0]
             dataX.append(a)
             dataY.append(dataset[i + look_back, 0])
@@ -598,12 +645,25 @@ def lstm_memoria_lotes(data_csv_np, epoch=50 ,porcentaje_entrenamiento=0.80, num
     numpy.random.seed(7)
     # load the dataset
     dataset = data_csv_np.astype('float32')
-    # normalize the dataset
+    dataset_copy = dataset.copy()
+    # Dividir para train y split
+    train_size = int(len(dataset) * porcentaje_entrenamiento) + 1 # agrego un nuevo valor en train
+    test_size = len(dataset)+2 - train_size # Agrego uno en train y otro en test
+    #-----------------------------------------------------------
+    # Cuadrar los puntos para que se mostrar en la gráfica correctamente y no perder datos
+    last_row = numpy.array(dataset.iloc[-1,:].values).reshape(1,1)
+    last_train_row = numpy.array(dataset.iloc[train_size-1,:].values).reshape(1,1)
+    dataset_split = dataset.iloc[:train_size-1,:]
+    dataset_split = dataset_split.append(pandas.DataFrame(last_train_row))
+    dataset_split2 = dataset.iloc[train_size-1:,:]
+    dataset_split2 = dataset_split2.append(pandas.DataFrame(last_row))
+    frames = [dataset_split, dataset_split2]
+    dataset = pandas.concat(frames)
+    #------------------------------------------------------------
+    # Normalizar el dataset
     scaler = MinMaxScaler(feature_range=(0, 1))
     dataset = scaler.fit_transform(dataset)
-    # split into train and test sets
-    train_size = int(len(dataset) * porcentaje_entrenamiento)
-    test_size = len(dataset) - train_size
+    dataset_copy = scaler.fit_transform(dataset_copy)
     train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
     print('Valores en train: ',len(train), 'Valores en test: ',len(test))
     # reshape into X=t and Y=t+1
@@ -643,8 +703,8 @@ def lstm_memoria_lotes(data_csv_np, epoch=50 ,porcentaje_entrenamiento=0.80, num
     # shift test predictions for plotting
     testPredictPlot = numpy.empty_like(dataset)
     testPredictPlot[:, :] = numpy.nan
-    testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
-    return [scaler.inverse_transform(dataset), trainPredictPlot, testPredictPlot, [trainScore,testScore]]
+    testPredictPlot[len(trainPredict)+(look_back*2):len(dataset), :] = testPredict
+    return [scaler.inverse_transform(dataset_copy), trainPredictPlot, testPredictPlot, [trainScore,testScore]]
 
 def lstm_memoria_lotes_apilados(data_csv_np, epoch=5 ,porcentaje_entrenamiento=0.80, num_anteriores=3, num_capas=4):
     import numpy
@@ -734,7 +794,8 @@ def plot_localidades_crecimiento(estra,data_csv_localidad):
             plt.text(estra.Longitud.values[t],estra.Latitud.values[t],estra['Nombre Localidad'].values[t])
 
     plt.legend();
-    plt.show()
+    plt.show();
+    plt.clim(vmin=0, vmax=36000);
     #plt.close()
     
 def series(estra,data_csv,suavizado=1,tipo="zonas"):
@@ -795,6 +856,8 @@ def decisiontrees(name, serie, porcentaje_entrenamiento=0.90, deep = [3,4,5,6]):
     import pandas as pd
     import matplotlib.pyplot as plt
     from sklearn.tree import DecisionTreeRegressor
+    from sklearn.metrics import mean_squared_error
+    import math
     
     rng = np.random.RandomState(1)
     lenght = serie.values.shape[0]
@@ -807,7 +870,7 @@ def decisiontrees(name, serie, porcentaje_entrenamiento=0.90, deep = [3,4,5,6]):
         X_test_plot = np.arange(0.0, lenght, 0.01)[:, np.newaxis]
         y_predict_plot = regressor.predict(X_test_plot)
         y_predict = regressor.predict(X[n_train:])
-        y_error = (np.abs(y_predict - y[n_train:]).sum())/len(y_predict)
+        y_error = math.sqrt(mean_squared_error(y_predict , y[n_train:]))
         # Plot the results
         plt.figure(figsize=(12,6))
         plt.scatter(X,y, s=20, edgecolor="black",
@@ -817,7 +880,7 @@ def decisiontrees(name, serie, porcentaje_entrenamiento=0.90, deep = [3,4,5,6]):
 
         plt.xlabel("Meses")
         plt.ylabel("Residuos")
-        plt.title("Regresión usando Decision Tree - Error: "+str(y_error))
+        plt.title(name+" - regresión usando Decision Tree - Error: "+str(y_error))
         plt.legend()
         plt.show();
 
@@ -827,6 +890,8 @@ def SVRegresion(name, serie, cv=25,n_entrenamientos=50, porcentaje_entrenamiento
     import matplotlib.pyplot as plt
     from sklearn.svm import SVR
     from sklearn.model_selection import GridSearchCV
+    from sklearn.metrics import mean_squared_error
+    import math
     plt.figure(figsize=(12,6))
     rng = np.random.RandomState(1)
     lenght = serie.values.shape[0]
@@ -849,7 +914,8 @@ def SVRegresion(name, serie, cv=25,n_entrenamientos=50, porcentaje_entrenamiento
     y_svr_plot = svr.predict(X_test_plot)
     X_test = X[n_train:]
     y_test_p = svr.predict(X_test)
-    y_error = np.abs(y[n_train:] - y_test_p).sum()/len(y[n_train:])
+    y_error_train = math.sqrt(mean_squared_error(svr.predict(X[:n_train]), y[:n_train]))
+    y_error = math.sqrt(mean_squared_error(y[n_train:], y_test_p))
     plt.scatter(X, y, c='darkorange', label='datos', zorder=1,
                 edgecolors=(0, 0, 0))
     plt.plot(X_test_plot, y_svr_plot, c='cornflowerblue',
@@ -858,6 +924,6 @@ def SVRegresion(name, serie, cv=25,n_entrenamientos=50, porcentaje_entrenamiento
          label='SVR test')
     plt.xlabel("Meses")
     plt.ylabel("Residuos")
-    plt.title("Regresión usando SVR - Error test: "+str(y_error))
+    plt.title("Regresión usando SVR - Error en train: "+str(y_error_train)+" - Error test: "+str(y_error))
     plt.legend()
     plt.show()
