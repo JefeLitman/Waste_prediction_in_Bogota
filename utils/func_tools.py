@@ -408,7 +408,7 @@ def red_lstm_corto_plazo(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90):
     dataset = scaler.fit_transform(dataset)
     dataset_copy = scaler.fit_transform(dataset_copy)
     train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
-    print('Valores en train: ',len(train), 'Valores en test: ',len(test))
+    print('Valores en train: ',len(train)-1, 'Valores en test: ',len(test)-1)
     # Covertir un array de valores en una matrix dataset
     def create_dataset(dataset, look_back=1):
         dataX, dataY = [], []
@@ -505,7 +505,7 @@ def lstm_ventana(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90, num_ante
     dataset = scaler.fit_transform(dataset)
     dataset_copy = scaler.fit_transform(dataset_copy)
     train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
-    print('Valores en train: ',len(train), 'Valores en test: ',len(test))
+    print('Valores en train: ',len(train)-1, 'Valores en test: ',len(test)-1)
     # reshape into X=t and Y=t+1
     look_back = num_anteriores
     trainX, trainY = create_dataset(train, look_back)
@@ -585,7 +585,7 @@ def lstm_ventana_regresion(data_csv_np, epoch=200 ,porcentaje_entrenamiento=0.90
     dataset = scaler.fit_transform(dataset)
     dataset_copy = scaler.fit_transform(dataset_copy)
     train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
-    print('Valores en train: ',len(train), 'Valores en test: ',len(test))
+    print('Valores en train: ',len(train)-1, 'Valores en test: ',len(test)-1)
     # reshape into X=t and Y=t+1
     look_back = num_anteriores
     trainX, trainY = create_dataset(train, look_back)
@@ -665,7 +665,7 @@ def lstm_memoria_lotes(data_csv_np, epoch=50 ,porcentaje_entrenamiento=0.80, num
     dataset = scaler.fit_transform(dataset)
     dataset_copy = scaler.fit_transform(dataset_copy)
     train, test = dataset[0:train_size,:], dataset[train_size:len(dataset),:]
-    print('Valores en train: ',len(train), 'Valores en test: ',len(test))
+    print('Valores en train: ',len(train)-1, 'Valores en test: ',len(test)-1)
     # reshape into X=t and Y=t+1
     look_back = num_anteriores
     trainX, trainY = create_dataset(train, look_back)
@@ -847,8 +847,8 @@ def series(estra,data_csv,suavizado=1,tipo="zonas"):
             s = pd.Series(result, dtype=float, index=rng)
             # Suavizar la serie
             s = s.rolling(suavizado).mean()
-            dict_series[l_id] = s
-            series_list.append([l_id,s])
+            dict_series[estra['Nombre Localidad'][estra.index==l_id].values[0]] = s
+            series_list.append([estra['Nombre Localidad'][estra.index==l_id].values[0],s])
     return dict_series, series_list
 
 def decisiontrees(name, serie, porcentaje_entrenamiento=0.90, deep = [3,4,5,6]):
@@ -908,7 +908,7 @@ def SVRegresion(name, serie, cv=25,n_entrenamientos=50, porcentaje_entrenamiento
     sv_score_train = svr.best_estimator_.score(X[:n_train], y[:n_train])
     sv_score_test = svr.best_estimator_.score(X[n_train:], y[n_train:])
     print("Score entrenamiento R^2: ", sv_score_train)
-    print("Score entrenamiento R^2: ", sv_score_test)
+    print("Score pruebas R^2: ", sv_score_test)
     print("Support vector (Coeficiente): %.3f" % sv_ratio)
     X_test_plot = np.arange(0.0, lenght, 0.01)[:, np.newaxis]
     y_svr_plot = svr.predict(X_test_plot)
@@ -924,6 +924,204 @@ def SVRegresion(name, serie, cv=25,n_entrenamientos=50, porcentaje_entrenamiento
          label='SVR test')
     plt.xlabel("Meses")
     plt.ylabel("Residuos")
-    plt.title("Regresión usando SVR - Error en train: "+str(y_error_train)+" - Error test: "+str(y_error))
+    plt.title(name+" - regresión usando SVR - Error en train: "+str(y_error_train)+" - Error test: "+str(y_error))
     plt.legend()
     plt.show()
+    
+    
+def iniciar():
+    print('Inicio ....')
+    tipo = input("Modelo a entrenar para zonas o localidades? = ")
+    print("Tamaño de la ventana para suavizar las series entre 1 - 4 ")
+    suavizado = input("Tamaño de la ventana para el suavizado de las series? = ")
+    print("Modelos disponibles SVR y LSTM (con pasos de tiempo)")
+    modelo_a_entrenar = input("Cuál modelo quiere entrenar? = ")
+    print("Número de prediciones no superior a 24 meses")
+    n_prediciones = input("Número de prediciones a realizar? (en meses) = ")
+    if modelo_a_entrenar == 'SVR':
+        print("Número de entrenamientos entre 100 - 250")
+        n_entrenamientos = int(input("Número de entrenamientos? = "))
+        print("Número de validaciones cruzadas entre 5 - 25 ")
+        cv = int(input("Cuántas validaciones cruzadas? = "))
+        print("OK... Parámetros guardados")
+        return [tipo, suavizado, modelo_a_entrenar, n_entrenamientos, cv, n_prediciones]
+    elif modelo_a_entrenar == 'LSTM':
+        print("Número de capas entre 1-10")
+        n_capas = int(input("Cuántas capas? = "))
+        print("Número de épocas de entrenamiento entre 1 - 300")
+        n_epoch = int(input("Cuántas epocas de entrenamiento? = "))
+        print("Número de pasos anteriores entre 1 - 5")
+        n_anteriores = int(input("Cuántos pasos anteriores? = "))
+        print("OK... Parámetros guardados")
+        return [tipo, suavizado, modelo_a_entrenar, n_capas, n_epoch, n_anteriores, n_prediciones]
+
+def generar_series(estratificacion,data_csv_zona, data_csv_localidad, parametros):
+    if parametros[0] == 'localidades':
+        dict_, series_list = series(estratificacion,
+                                               data_csv_localidad,
+                                               suavizado=int(parametros[1]),
+                                               tipo=parametros[0])
+        return [dict_, series_list]
+    if parametros[0] == 'zonas':
+        dict_, series_list = series(estratificacion,
+                                               data_csv_zona,
+                                               suavizado=int(parametros[1]),
+                                               tipo=parametros[0])
+        return [dict_, series_list]
+
+def SVRegresion_model(name, serie, cv=25,n_entrenamientos=50, porcentaje_entrenamiento=1.0, n_predicciones=12):
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from sklearn.svm import SVR
+    from sklearn.model_selection import GridSearchCV
+    from sklearn.metrics import mean_squared_error
+    import math
+    # figura
+    plt.figure(figsize=(12,6))
+    rng = np.random.RandomState(1)
+    lenght = serie.values.shape[0]
+    n_train = int(porcentaje_entrenamiento * lenght)
+    X = np.array(range(1,lenght+1)).reshape(lenght,1)
+    y = serie.values.reshape(lenght,1).ravel()
+    
+    train_size = n_entrenamientos
+    svr = GridSearchCV(SVR(kernel='rbf', gamma=0.1), cv=cv,
+                   param_grid={"C": [1e0, 1e1, 1e2, 1e3, 1e5],
+                               "gamma": np.logspace(-4, 4, 25)})
+    svr.fit(X[:n_train], y[:n_train])
+    sv_ratio = svr.best_estimator_.support_.shape[0] / train_size
+    sv_score_train = svr.best_estimator_.score(X[:n_train], y[:n_train])
+    print("Score entrenamiento R^2: ", sv_score_train)
+    print("Support vector (Coeficiente): %.3f" % sv_ratio)
+    X_test_plot = np.arange(lenght+1, (lenght + n_predicciones)+1, 1)[:, np.newaxis]
+    y_svr_plot = svr.predict(X_test_plot)
+    y_error_train = math.sqrt(mean_squared_error(svr.predict(X[:n_train]), y[:n_train]))
+    plt.scatter(X, y, c='darkorange', label='datos', zorder=1,
+                edgecolors=(0, 0, 0))
+    plt.plot(X_test_plot, y_svr_plot, c='r',
+         label='predicciones')
+    plt.plot(X, svr.predict(X[:n_train]), c='cornflowerblue',
+         label='SVR train')
+    plt.xlabel("Meses")
+    plt.ylabel("Residuos")
+    plt.title(name+" - regresión usando SVR - Error en train: "+str(y_error_train))
+    plt.legend()
+    plt.show()
+    return y_svr_plot
+
+
+def lstm_ventana_regresion_model(name, data_csv_np, epoch=200 ,porcentaje_entrenamiento=1.0, num_anteriores=3, num_capas=4, n_predicciones=12):
+    import numpy
+    import matplotlib.pyplot as plt
+    from pandas import read_csv
+    import pandas
+    import math
+    from keras.models import Sequential
+    from keras.layers import Dense
+    from keras.layers import LSTM
+    from sklearn.preprocessing import MinMaxScaler
+    from sklearn.metrics import mean_squared_error
+    # convert an array of values into a dataset matrix
+    def create_dataset(dataset, look_back=1):
+        dataX, dataY = [], []
+        for i in range(len(dataset)-look_back-1):
+            a = dataset[i:(i+look_back), 0]
+            dataX.append(a)
+            dataY.append(dataset[i + look_back, 0])
+        return numpy.array(dataX), numpy.array(dataY)
+    # fix random seed for reproducibility
+    numpy.random.seed(7)
+    # load the dataset
+    dataset = data_csv_np.astype('float32')
+    dataset_copy = dataset.copy()
+    # Dividir para train y split
+    train_size = int(len(dataset) * porcentaje_entrenamiento)+1
+    #-----------------------------------------------------------
+    # Cuadrar los puntos para que se mostrar en la gráfica correctamente y no perder datos
+    last_row = numpy.array(dataset.iloc[-1,:].values).reshape(1,1)
+    dataset = dataset.append(pandas.DataFrame(last_row))
+    #------------------------------------------------------------
+    # Normalizar el dataset
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    dataset = scaler.fit_transform(dataset)
+    dataset_copy = scaler.fit_transform(dataset_copy)
+    train = dataset[0:train_size,:]
+    test = dataset[-(num_anteriores+1):-1,:]
+    print('Valores en train: ',len(train)-1)
+    # reshape into X=t and Y=t+1
+    look_back = num_anteriores
+    trainX, trainY = create_dataset(train, look_back)
+    # reshape input to be [samples, time steps, features]
+    trainX = numpy.reshape(trainX, (trainX.shape[0], trainX.shape[1], 1))
+    testX = numpy.reshape(test, (test.shape[1], test.shape[0], 1))
+    # create and fit the LSTM network
+    model = Sequential()
+    model.add(LSTM(num_capas, input_shape=(look_back, 1)))
+    model.add(Dense(1))
+    model.compile(loss='mean_squared_error', optimizer='adam')
+    model.fit(trainX, trainY, epochs=epoch, batch_size=1, verbose=False)
+    # make predictions
+    trainPredict = model.predict(trainX)
+    # invert predictions
+    trainPredict = scaler.inverse_transform(trainPredict)
+    trainY = scaler.inverse_transform([trainY])
+    # calculate root mean squared error
+    trainScore = math.sqrt(mean_squared_error(trainY[0], trainPredict[:,0]))
+    predictions = []
+    for p in range(n_predicciones):
+        testPredict = model.predict(testX)
+        predictions.append(testPredict)
+        t = testX[0,:,0]
+        t = list(numpy.delete(t,0,0))
+        t.append(testPredict)
+        testX[0,:,0] =  numpy.array(t)
+    predicts = scaler.inverse_transform(numpy.array(predictions).flatten().reshape(len(predictions),1))
+    # shift train predictions for plotting
+    trainPredictPlot = numpy.empty_like(dataset)
+    trainPredictPlot[:, :] = numpy.nan
+    trainPredictPlot[look_back:len(trainPredict)+look_back, :] = trainPredict
+    # plotting
+    fig = plt.figure(figsize=(12,6))
+    plt.title(name+ '- Error en train ' +str(trainScore))
+    lenght = scaler.inverse_transform(dataset_copy).shape[0]
+    X = numpy.array(range(1,lenght+1)).reshape(lenght,1)
+    plt.scatter(X,scaler.inverse_transform(dataset_copy),c='darkorange', label='datos', zorder=1,
+                edgecolors=(0, 0, 0));
+    plt.plot(trainPredictPlot,c='cornflowerblue',
+         label='LSTM');
+    plt.plot(range(len(dataset)-1,len(dataset)-1+n_predicciones),predicts,c='r',
+         label='Predicciones');
+    plt.legend();plt.show();plt.close()
+    return predicts
+    
+def entrenar_modelo(dic_series, series_list, parametros):
+    import pandas as pd
+    predicciones_lista = []
+    if parametros[2] == 'SVR':
+        keys = dic_series.keys()
+        for k in keys:
+            predicciones = SVRegresion_model(k, 
+                                   dic_series[k].dropna(), 
+                                   cv=parametros[4], 
+                                   n_entrenamientos=parametros[3], 
+                                   porcentaje_entrenamiento=1.0,
+                                   n_predicciones=int(parametros[5]))
+            predicciones_lista.append(predicciones)
+        return predicciones_lista
+    elif parametros[2] == 'LSTM':
+        keys = list(dic_series.keys())
+        for i,si in enumerate(series_list):
+            series_list[i][1] = si[1].dropna()
+        data_ = pd.DataFrame(series_list)
+        for num_ in range(0,len(series_list)):
+            data_i = pd.DataFrame(data_.iloc[num_,:].values[1].values)
+            predicciones = lstm_ventana_regresion_model(keys[num_],
+                                                               data_i, 
+                                                               epoch=int(parametros[4]),
+                                                               porcentaje_entrenamiento=1.0, 
+                                                               num_anteriores=int(parametros[5]), 
+                                                               num_capas=int(parametros[3]),
+                                                               n_predicciones =int(parametros[6]))
+            predicciones_lista.append(predicciones)
+        return predicciones_lista
