@@ -263,6 +263,7 @@ def plot_participacion_localidad(Archivos_csvs, metodo='dinamico'):
     from bokeh.models import ColumnDataSource, HoverTool
     from bokeh.layouts import row
     from bokeh.layouts import gridplot
+    from bokeh.models import Legend
     
     estra = Archivos_csvs[0]
     data_csv_localidad = Archivos_csvs[1]
@@ -353,7 +354,11 @@ def plot_participacion_localidad(Archivos_csvs, metodo='dinamico'):
             # crear las figuras
             for index, columns, colors, data, ano in dicts[dy]: 
                 p = figure_bokeh_bar(index,columns,colors,data,ano)
+                p.legend.orientation = "horizontal"
+                legend = Legend(location=(-10,0))
+                p.add_layout(legend, 'right')
                 ps.append(p)
+                
             # crear la grilla
             grid= gridplot([[ps[0],ps[1]],[ps[2],ps[3]],[ps[4],ps[5]]])
             # mostrar los resultados
@@ -777,26 +782,44 @@ def lstm_memoria_lotes_apilados(data_csv_np, epoch=5 ,porcentaje_entrenamiento=0
     testPredictPlot[len(trainPredict)+(look_back*2)+1:len(dataset)-1, :] = testPredict
     return [scaler.inverse_transform(dataset), trainPredictPlot, testPredictPlot, [trainScore,testScore]]
 
-def plot_localidades_crecimiento(estra,data_csv_localidad):
+def plot_localidades_crecimiento(estra,data_csv_localidad,tipo='dinamico'):
     import numpy as np
     import pandas as pd
     import matplotlib.pyplot as plt
-    for ano in [2012,2013,2014,2015,2016]:
-        poblacion_data = data_csv_localidad[data_csv_localidad['AÑO']==ano].sort_values(by='ID Localidad')
-        p = estra.plot(figsize=(12,12),subplots=True,kind="scatter", x="Longitud", y="Latitud",alpha=0.4,
-               s=poblacion_data["Población Por localidad"]/700,
-               label="Población Por localidad",
-               c=poblacion_data['Febrero'], 
-               cmap=plt.get_cmap("jet"), 
-               colorbar=True,
-               title= 'Cambio en población y desecho de residuos - '+str(ano))
-        for t in range(20):
-            plt.text(estra.Longitud.values[t],estra.Latitud.values[t],estra['Nombre Localidad'].values[t])
+    if tipo == 'dinamico':
+        data_csv_localidad_copy = data_csv_localidad.copy()
+        geo = estra[['Longitud','Latitud']].values
+        geo = pd.DataFrame(geo, columns=['Longitud','Latitud'])
+        IDs = estra.index.values
+        Idtempd = pd.DataFrame(IDs, columns=['ID Localidad'])
+        dft = pd.concat([Idtempd, geo], axis=1)
+        result = pd.merge(data_csv_localidad_copy, dft, on='ID Localidad')
+        for i,ID_ in enumerate(result.iloc[:,0]):
+            result.iloc[i,0] = estra['Nombre Localidad'][estra.index==ID_].values[0]
+        result.rename(columns={'Población Por localidad': 'Población anual', 'ID Localidad': 'Nombre localidad'}, inplace=True)
+        data_csv_localidad_melt = result.melt(id_vars=['Nombre localidad', 
+                                                       'AÑO', 
+                                                       'Población anual',
+                                                       'Longitud',
+                                                       'Latitud'], var_name='MES', value_name='Residuos generados')
+        return data_csv_localidad_melt
+    
+    elif tipo == 'estatico':
+        for ano in [2012,2013,2014,2015,2016]:
+            poblacion_data = data_csv_localidad[data_csv_localidad['AÑO']==ano].sort_values(by='ID Localidad')
+            p = estra.plot(figsize=(12,12),subplots=True,kind="scatter", x="Longitud", y="Latitud",alpha=0.4,
+                   s=poblacion_data["Población Por localidad"]/700,
+                   label="Población Por localidad",
+                   c=poblacion_data['Febrero'], 
+                   cmap=plt.get_cmap("jet"), 
+                   colorbar=True,
+                   title= 'Cambio en población y desecho de residuos - '+str(ano))
+            for t in range(20):
+                plt.text(estra.Longitud.values[t],estra.Latitud.values[t],estra['Nombre Localidad'].values[t])
 
-    plt.legend();
-    plt.show();
-    plt.clim(vmin=0, vmax=36000);
-    #plt.close()
+        plt.legend();
+        plt.show();
+        #plt.close()
     
 def series(estra,data_csv,suavizado=1,tipo="zonas"):
     import numpy as np
@@ -948,7 +971,7 @@ def iniciar():
     elif modelo_a_entrenar == 'LSTM':
         print("Número de capas entre 1-10")
         n_capas = int(input("Cuántas capas? = "))
-        print("Número de épocas de entrenamiento entre 1 - 300")
+        print("Número de entrenamiento entre 1 - 300")
         n_epoch = int(input("Cuántas epocas de entrenamiento? = "))
         print("Número de pasos anteriores entre 1 - 5")
         n_anteriores = int(input("Cuántos pasos anteriores? = "))
