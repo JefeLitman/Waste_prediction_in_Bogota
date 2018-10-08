@@ -959,7 +959,7 @@ def iniciar():
     suavizado = input("Tamaño de la ventana para el suavizado de las series? = ")
     print("Modelos disponibles SVR y LSTM (con pasos de tiempo)")
     modelo_a_entrenar = input("Cuál modelo quiere entrenar? = ")
-    print("Número de prediciones no superior a 24 meses")
+    print("Número de predicciones no superior a 24 meses")
     n_prediciones = input("Número de prediciones a realizar? (en meses) = ")
     if modelo_a_entrenar == 'SVR':
         print("Número de entrenamientos entre 100 - 250")
@@ -1157,12 +1157,28 @@ def estratificacion_residuos(tipo, estratificacion, caracterizacion, prediciones
     residuos_estrato = defaultdict(list)
     if tipo == 'zonas':
         # poblaciones último año ordenadas por zona
+        #poblaciones = data_csv_zona[data_csv_zona['AÑO'] == 2016 ].sort_values(by=['Zona'])[data_csv_zona.keys()[-1]]
+        predicciones_array = pd.DataFrame(np.squeeze(np.array(prediciones)))
         poblaciones = data_csv_zona[data_csv_zona['AÑO'] == 2016 ].sort_values(by=['Zona'])[data_csv_zona.keys()[-1]]
-        predicciones_array = pd.DataFrame(np.array(prediciones))
+        poblaciones_values = poblaciones.values.reshape(len(poblaciones),1)
+        estratificaciones_pd = estratificacion.groupby('Zona')[['Str 1 (%)',
+                                 'Str 2 (%)',
+                                 'Str 3 (%)',
+                                 'Str 4 (%)',
+                                 'Str 5 (%)',
+                                 'Str 6 (%)']].mean()
+        for row in range(predicciones_array.shape[0]):
+            for col in range(predicciones_array.shape[1]):
+                ptoneladas = predicciones_array.iloc[row,col]
+                l_t = []
+                for l in range(estratificaciones_pd.shape[1]):
+                    l_t.append(estratificaciones_pd.iloc[row,l]/100*ptoneladas)
+                residuos_estrato[row+1].append(l_t)
+        return residuos_estrato
     elif tipo == 'localidades':
         # poblaciones último año ordenadas por ID localidad
         poblaciones = data_csv_localidad[data_csv_localidad['AÑO'] == 2016 ].sort_values(by=['ID Localidad'])[data_csv_localidad.keys()[-1]]
-        predicciones_array = pd.DataFrame(np.array(prediciones))
+        predicciones_array = pd.DataFrame(np.squeeze(np.array(prediciones)))
         poblaciones = data_csv_localidad[data_csv_localidad['AÑO'] == 2016 ].sort_values(by=['ID Localidad'])[data_csv_localidad.keys()[-1]]
         poblaciones_values = poblaciones.values.reshape(len(poblaciones),1)
         estratificaciones_pd = estratificacion.iloc[:,2:-3]
@@ -1182,12 +1198,19 @@ def plot_residuos_estrato(estratificacion,residuos_estrato, parametros):
     import matplotlib.pyplot as plt
     
     if parametros[0] == 'zonas':
-        pass
+        id_zona = input("Cuál zona (ID: 1-6) quiere visualizar? = ")
+        n_prediccion = input("Cuál predicción (mes) quiere visualizar? = ")
+        nombre = 'ASE '+str(id_zona)
+        ax = pd.DataFrame(residuos_estrato[int(id_zona)][int(n_prediccion)-1],columns=[nombre]).plot.bar();
+        plt.rcParams["figure.figsize"] = [8,6];
+        ax.set_ylabel('Residuos (Toneladas)');
+        ax.set_xlabel('Estratos');
+        ax.set_title('Residuos por estrato en la zona '+ nombre);
     elif parametros[0] == 'localidades':
         id_localidad = input("Cuál localidad (ID) quiere visualizar? = ")
         n_prediccion = input("Cuál predicción (mes) quiere visualizar? = ")
         nombre = estratificacion['Nombre Localidad'][estratificacion.index==int(id_localidad)].values[0]
-        ax = pd.DataFrame(residuos_estrato[int(id_localidad)][int(n_prediccion)],columns=[nombre]).plot.bar();
+        ax = pd.DataFrame(residuos_estrato[int(id_localidad)][int(n_prediccion)-1],columns=[nombre]).plot.bar();
         plt.rcParams["figure.figsize"] = [8,6];
         ax.set_ylabel('Residuos (Toneladas)');
         ax.set_xlabel('Estratos');
@@ -1199,13 +1222,26 @@ def plot_caracterizacion(estratificacion, caracterizacion, residuos_estrato, par
     import matplotlib.pyplot as plt
     
     if parametros[0] == 'zonas':
-        pass
+        
+        id_zona = input("Cuál zona (1-6) quiere visualizar? = ")
+        n_prediccion = input("Cuál predicción (mes) quiere visualizar? = ")
+        n_estrato = input("Cuál es el estrato (1-6) que quiere visualizar? = ")
+        pr_estrato = residuos_estrato[int(id_zona)][int(n_prediccion)-1][int(n_estrato)-1]
+        ax = pd.DataFrame(pr_estrato*caracterizacion['Estrato '+n_estrato]/100).plot.bar();
+        nombre = 'ASE '+str(id_zona)
+        columns = list(caracterizacion.SUBCATEGORIA.values)
+        ax.set_xticklabels(columns);
+        plt.rcParams["figure.figsize"] = [12,8];
+        ax.set_ylabel('Residuos (Toneladas)');
+        ax.set_xlabel('Subcategorias');
+        ax.set_title('Residuos por categorias en el estrato '+n_estrato+' de la zona '+ nombre);
+
     elif parametros[0] == 'localidades':
         id_localidad = input("Cuál localidad (ID) quiere visualizar? = ")
         n_prediccion = input("Cuál predicción (mes) quiere visualizar? = ")
         n_estrato = input("Cuál es el estrato (1-6) que quiere visualizar? = ")
         nombre = estratificacion['Nombre Localidad'][estratificacion.index==int(id_localidad)].values[0]
-        pr_estrato = residuos_estrato[int(id_localidad)][int(n_prediccion)][int(n_estrato)]
+        pr_estrato = residuos_estrato[int(id_localidad)][int(n_prediccion)-1][int(n_estrato)-1]
         ax = pd.DataFrame(pr_estrato*caracterizacion['Estrato '+n_estrato]/100).plot.bar();
         columns = list(caracterizacion.SUBCATEGORIA.values)
         ax.set_xticklabels(columns);
@@ -1213,3 +1249,13 @@ def plot_caracterizacion(estratificacion, caracterizacion, residuos_estrato, par
         ax.set_ylabel('Residuos (Toneladas)');
         ax.set_xlabel('Subcategorias');
         ax.set_title('Residuos por categorias en el estrato '+n_estrato+' de la localidad '+ nombre);
+        
+def draft():
+    estratificacion_copy = estratificacion.copy()
+    totales = estratificacion.groupby('Zona')['Total de Viviendas'].sum().values
+    porcentaje_localidades = np.zeros((20,1))
+    for row in range(porcentaje_localidades.shape[0]):
+        for col in range(porcentaje_localidades.shape[1]):
+            id_zona = int(estratificacion.iloc[row,-1].split(' ')[1])-1
+            porcentaje_localidades[row,col] = (estratificacion.iloc[row,1]/totales[id_zona])
+    estratificacion.iloc[:,2:-3] = porcentaje_localidades*(estratificacion.iloc[:,2:-3]).values
