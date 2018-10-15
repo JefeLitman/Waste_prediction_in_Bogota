@@ -1259,3 +1259,32 @@ def draft():
             id_zona = int(estratificacion.iloc[row,-1].split(' ')[1])-1
             porcentaje_localidades[row,col] = (estratificacion.iloc[row,1]/totales[id_zona])
     estratificacion.iloc[:,2:-3] = porcentaje_localidades*(estratificacion.iloc[:,2:-3]).values
+    
+def plot_localidades_crecimiento_rpc(estra,data_csv_localidad,tipo='dinamico'):
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    
+    def fdias(df):
+        dias = []
+        for m in df.values:
+            if m in ['Abril', 'Junio', 'Septiembre', 'Noviembre']:
+                dias.append(30)
+            elif m == 'Febrero':
+                dias.append(29)
+            else:
+                dias.append(31)
+        return np.array(dias)
+
+    data_csv_localidad_copy = data_csv_localidad.copy()
+    for i,ID_ in enumerate(data_csv_localidad_copy.iloc[:,0]):
+        data_csv_localidad_copy.iloc[i,0] = estra['Nombre Localidad'][estra.index==ID_].values[0]
+    data_csv_localidad_copy.rename(columns={'Población Por localidad': 'Población anual', 'ID Localidad': 'Nombre localidad'}, inplace=True)
+    data_csv_localidad_melt = data_csv_localidad_copy.melt(id_vars=['Nombre localidad', 
+                                                       'AÑO', 
+                                                       'Población anual'], var_name='MES', value_name='Residuos generados')
+    rpc_diario = (data_csv_localidad_melt['Residuos generados']*1000/data_csv_localidad_melt['Población anual'])/fdias(data_csv_localidad_melt['MES'])
+    rpc = pd.DataFrame(rpc_diario, columns=['RPC kg/día'])
+    dft = pd.concat([data_csv_localidad_melt, rpc], axis=1)
+
+    return dft
