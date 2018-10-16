@@ -20,7 +20,7 @@ neuronales para la predicción de la generación de residuos sólidos en las loc
 
 **Requerimientos:**  
 - Python v3.6 (Lenguaje de programación)
-- Anaconda v3.2 (Plataforma para ciencia de datos y Machine Learning)
+- Anaconda v3.5.2 (Plataforma para ciencia de datos y Machine Learning)
 - Librería Nodejs v8.11.3 sobre Anaconda 3.6 (Librería adicional)
 - Librería bokeh v0.12.16 sobre Anaconda 3.6 (Librería adicional)
 - Librería Holoviews v1.10.7 sobre Anaconda 3.6 (Librería adicional)
