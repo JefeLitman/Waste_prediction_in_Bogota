@@ -28,9 +28,9 @@ neuronales para la predicción de la generación de residuos sólidos en las loc
 - Librería Tensorflow v1.9.0
 
 #### Presentado por:
-- Jefferson David Rodríguez Chivatá
-- Gabriel Rodrigo Pedraza Ferreira
-- [Fabio Martínez Carrillo](https://github.com/famarcar)  
+- [Jefferson David Rodríguez Chivatá](https://www.jeffersonrodriguez.co/)
+- [Gabriel Rodrigo Pedraza Ferreira](http://scienti.colciencias.gov.co:8081/cvlac/visualizador/generarCurriculoCv.do?cod_rh=0000520349)
+- [Fabio Martínez Carrillo](http://scienti.colciencias.gov.co:8081/cvlac/visualizador/generarCurriculoCv.do?cod_rh=0000738018)  
 
 [Universidad Industrial de Santander](https://www.uis.edu.co/webUIS/es/index.jsp)      
 [Escuela de Ingeniería en Sistemas e Informática](http://cormoran.uis.edu.co/eisi/)  
