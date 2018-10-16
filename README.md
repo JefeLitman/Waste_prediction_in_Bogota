@@ -30,8 +30,9 @@ neuronales para la predicción de la generación de residuos sólidos en las loc
 #### Presentado por:
 - Jefferson David Rodríguez Chivatá
 - Gabriel Rodrigo Pedraza Ferreira
-- [Fabio Martínez Carrillo](https://github.com/famarcar)
-[Universidad Industrial de Santander](https://www.uis.edu.co/webUIS/es/index.jsp)    
+- [Fabio Martínez Carrillo](https://github.com/famarcar)  
+
+[Universidad Industrial de Santander](https://www.uis.edu.co/webUIS/es/index.jsp)      
 [Escuela de Ingeniería en Sistemas e Informática](http://cormoran.uis.edu.co/eisi/)  
 
 #### Presentado a:
