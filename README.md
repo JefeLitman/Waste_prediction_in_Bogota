@@ -27,7 +27,8 @@ neuronales para la predicción de la generación de residuos sólidos en las loc
 - Librería keras v2.2.2
 - Librería Tensorflow v1.9.0
 
-[**Máquina Virtual**](https://drive.google.com/file/d/10r0FC7QgB5HFWeDssGyxryN1x6YDbP5g/view?usp=sharing)
+[**Máquina Virtual**](https://drive.google.com/file/d/10r0FC7QgB5HFWeDssGyxryN1x6YDbP5g/view?usp=sharing)  
+[**Informe final**](https://github.com/JotaRodriguez94/Waste_prediction_in_Bogota/blob/master/Informe_USTAmbiental.pdf)
 
 #### Presentado por:
 - [Jefferson David Rodríguez Chivatá](https://www.jeffersonrodriguez.co/)
